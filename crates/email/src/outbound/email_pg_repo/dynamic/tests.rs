@@ -743,7 +743,9 @@ fn test_build_query_shared_message_exists_is_not_link_scoped() {
         "shared EXISTS must not be link scoped: {sql}"
     );
     assert!(
-        clauses.iter().any(|clause| clause.contains("m.link_id = ANY(")),
+        clauses
+            .iter()
+            .any(|clause| clause.contains("m.link_id = ANY(")),
         "owned EXISTS must stay link scoped: {sql}"
     );
 }

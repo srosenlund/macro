@@ -355,9 +355,7 @@ fn push_thread_candidate_select(
                     None => Some(params.link_ids.as_slice()),
                 },
             ),
-            ThreadCandidateSource::Shared | ThreadCandidateSource::Project => {
-                SqlFragment::empty()
-            }
+            ThreadCandidateSource::Shared | ThreadCandidateSource::Project => SqlFragment::empty(),
         };
         build_thread_message_exists_filter(
             email_filter,
