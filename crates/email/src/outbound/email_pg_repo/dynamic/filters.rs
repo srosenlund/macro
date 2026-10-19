@@ -462,10 +462,10 @@ pub(super) fn wants_message_exists_pushdown(view: &PreviewView) -> bool {
 }
 
 /// True when the candidate EXISTS is planned as a scan of the view's messages
-/// rather than a probe per thread: drafts and starred filter messages on a bare
-/// column and, unlike sent, have no thread-level index for the view. Bounding
-/// such a scan to the candidate links keeps it out of other mailboxes; bounding
-/// a per-thread probe instead tempts the planner into scanning the mailbox.
+/// rather than a probe per thread. Drafts and starred filter on a flag with a
+/// partial `(link_id, thread_id)` index, so bounding the scan to the candidate
+/// links reads only those inboxes' messages. Bounding a per-thread probe
+/// instead tempts the planner into scanning the whole mailbox.
 pub(super) fn scopes_message_exists_to_links(view: &PreviewView) -> bool {
     matches!(
         view,
