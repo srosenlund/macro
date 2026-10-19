@@ -1,3 +1,4 @@
+use super::SqlFragment;
 use super::filters::*;
 use super::resolve::{ResolvedFilters, can_short_circuit, resolve_filters};
 use crate::domain::models::{PreviewView, PreviewViewStandardLabel};
@@ -340,8 +341,31 @@ fn push_thread_candidate_select(
     // `matching_threads` CTE referenced via
     // `t.id IN (SELECT thread_id FROM matching_threads)`.
     if wants_message_exists_pushdown(view) {
-        build_thread_message_exists_filter(email_filter, view, &params.resolved)
-            .push_into(builder, &params.user_id);
+        // A thread's messages share its link_id, so owned candidates can bound
+        // the message scan to their links.
+        let message_link_scope = match source {
+            _ if !scopes_message_exists_to_links(view) => SqlFragment::empty(),
+            ThreadCandidateSource::Owned if per_link_fanout => {
+                SqlFragment::raw(" AND m.link_id = links.link_id")
+            }
+            ThreadCandidateSource::Owned => link_scope_fragment(
+                "m",
+                match params.team_id {
+                    Some(_) => params.resolved.team_link_ids(),
+                    None => Some(params.link_ids.as_slice()),
+                },
+            ),
+            ThreadCandidateSource::Shared | ThreadCandidateSource::Project => {
+                SqlFragment::empty()
+            }
+        };
+        build_thread_message_exists_filter(
+            email_filter,
+            view,
+            &params.resolved,
+            message_link_scope,
+        )
+        .push_into(builder, &params.user_id);
     } else if has_address_literals(email_filter) {
         build_thread_address_filter(email_filter).push_into(builder, &params.user_id);
     }

@@ -461,6 +461,20 @@ pub(super) fn wants_message_exists_pushdown(view: &PreviewView) -> bool {
     !build_view_message_filter(view).is_empty()
 }
 
+/// True when the candidate EXISTS is planned as a scan of the view's messages
+/// rather than a probe per thread: drafts and starred filter messages on a bare
+/// column and, unlike sent, have no thread-level index for the view. Bounding
+/// such a scan to the candidate links keeps it out of other mailboxes; bounding
+/// a per-thread probe instead tempts the planner into scanning the mailbox.
+pub(super) fn scopes_message_exists_to_links(view: &PreviewView) -> bool {
+    matches!(
+        view,
+        PreviewView::StandardLabel(
+            PreviewViewStandardLabel::Drafts | PreviewViewStandardLabel::Starred
+        )
+    )
+}
+
 /// Builds the candidate-stage mirror of the lateral message match:
 /// `AND EXISTS (SELECT 1 FROM email_messages m WHERE m.thread_id = t.id AND <lateral predicate>)`.
 /// The predicate is the same trash exclusion + view message filter +
@@ -471,11 +485,13 @@ pub(super) fn build_thread_message_exists_filter(
     ast: &Expr<EmailLiteral>,
     view: &PreviewView,
     resolved: &ResolvedFilters,
+    link_scope: SqlFragment,
 ) -> SqlFragment {
     let mut f = SqlFragment::raw(
         " AND EXISTS (SELECT 1 FROM email_messages m WHERE m.thread_id = t.id AND ",
     );
     f.extend(build_lateral_trash_exclusion(resolved));
+    f.extend(link_scope);
     let view_message_filter = build_view_message_filter(view);
     if !view_message_filter.is_empty() {
         f.extend(view_message_filter);
@@ -635,7 +651,7 @@ fn contacts_recipient_branch(
 }
 
 /// `AND <alias>.link_id = ANY($links)` when a link scope applies, empty otherwise.
-fn link_scope_fragment(alias: &str, link_scope: Option<&[Uuid]>) -> SqlFragment {
+pub(super) fn link_scope_fragment(alias: &str, link_scope: Option<&[Uuid]>) -> SqlFragment {
     match link_scope {
         Some(links) => {
             let mut f = SqlFragment::raw(format!(" AND {alias}.link_id = ANY("));

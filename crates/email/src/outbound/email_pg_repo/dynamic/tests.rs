@@ -623,6 +623,131 @@ fn test_build_query_team_scoped_multi_link_does_not_fan_out() {
     assert!(!sql.contains("FROM unnest("));
 }
 
+const CANDIDATE_MESSAGE_EXISTS: &str =
+    "EXISTS (SELECT 1 FROM email_messages m WHERE m.thread_id = t.id AND ";
+
+/// Every candidate-stage `EXISTS (... email_messages m ...)` clause in `sql`.
+fn candidate_message_exists_clauses(sql: &str) -> Vec<&str> {
+    sql.match_indices(CANDIDATE_MESSAGE_EXISTS)
+        .map(|(start, _)| {
+            let mut depth = 0usize;
+            let clause = &sql[start..];
+            let end = clause
+                .char_indices()
+                .find_map(|(i, c)| {
+                    match c {
+                        '(' => depth += 1,
+                        ')' => {
+                            depth -= 1;
+                            if depth == 0 {
+                                return Some(i + 1);
+                            }
+                        }
+                        _ => {}
+                    }
+                    None
+                })
+                .expect("balanced EXISTS clause");
+            &clause[..end]
+        })
+        .collect()
+}
+
+#[test]
+fn test_build_query_scopes_draft_and_starred_message_exists_to_links() {
+    let expr = Expr::Literal(EmailLiteral::CalendarOnly(false));
+    for label in [
+        PreviewViewStandardLabel::Drafts,
+        PreviewViewStandardLabel::Starred,
+    ] {
+        let view = PreviewView::StandardLabel(label);
+
+        let sql = super::query::debug_build_query_sql(&view, &expr);
+        let clauses = candidate_message_exists_clauses(&sql);
+        assert!(!clauses.is_empty(), "expected candidate EXISTS: {sql}");
+        for clause in clauses {
+            assert!(
+                clause.contains("m.link_id = ANY("),
+                "single-link EXISTS must be link scoped: {clause}"
+            );
+        }
+
+        let sql = super::query::debug_build_query_sql_multi_link(&view, &expr);
+        let clauses = candidate_message_exists_clauses(&sql);
+        assert!(!clauses.is_empty(), "expected candidate EXISTS: {sql}");
+        for clause in clauses {
+            assert!(
+                clause.contains("m.link_id = links.link_id"),
+                "fanned-out EXISTS must be scoped to its link: {clause}"
+            );
+        }
+
+        let sql = super::query::debug_build_query_sql_team_scoped_with_resolved(
+            &view,
+            &expr,
+            ResolvedFilters::empty().with_team_links(vec![Uuid::new_v4(), Uuid::new_v4()]),
+        );
+        let clauses = candidate_message_exists_clauses(&sql);
+        assert!(!clauses.is_empty(), "expected candidate EXISTS: {sql}");
+        for clause in clauses {
+            assert!(
+                clause.contains("m.link_id = ANY("),
+                "team EXISTS must be scoped to the team links: {clause}"
+            );
+        }
+    }
+}
+
+#[test]
+fn test_build_query_keeps_per_thread_message_exists_unscoped() {
+    // These views probe messages per candidate thread; a link predicate
+    // there tempts the planner into scanning the whole mailbox instead.
+    let expr = Expr::Literal(EmailLiteral::CalendarOnly(false));
+    for view in [
+        PreviewView::StandardLabel(PreviewViewStandardLabel::Sent),
+        PreviewView::StandardLabel(PreviewViewStandardLabel::Inbox),
+        PreviewView::StandardLabel(PreviewViewStandardLabel::Important),
+        PreviewView::StandardLabel(PreviewViewStandardLabel::Other),
+        PreviewView::UserLabel("Clients".to_string()),
+    ] {
+        for sql in [
+            super::query::debug_build_query_sql(&view, &expr),
+            super::query::debug_build_query_sql_multi_link(&view, &expr),
+        ] {
+            for clause in candidate_message_exists_clauses(&sql) {
+                assert!(
+                    !clause.contains("m.link_id"),
+                    "{view:?} EXISTS must stay a per-thread probe: {clause}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn test_build_query_shared_message_exists_is_not_link_scoped() {
+    // Shared threads live on other users' links.
+    let view = PreviewView::StandardLabel(PreviewViewStandardLabel::Drafts);
+    let expr = Expr::Literal(EmailLiteral::Shared(
+        item_filters::SharedEmailFilter::Include,
+    ));
+    let sql = super::query::debug_build_query_sql(&view, &expr);
+    let clauses = candidate_message_exists_clauses(&sql);
+
+    assert!(
+        clauses.len() >= 2,
+        "expected owned and shared candidate EXISTS: {sql}"
+    );
+    assert!(
+        clauses.iter().any(|clause| !clause.contains("m.link_id")),
+        "shared EXISTS must not be link scoped: {sql}"
+    );
+    assert!(
+        clauses.iter().any(|clause| clause.contains("m.link_id = ANY(")),
+        "owned EXISTS must stay link scoped: {sql}"
+    );
+}
+
 #[test]
 fn test_build_query_orders_by_id_to_match_cursor_tiebreak() {
     let view = PreviewView::StandardLabel(PreviewViewStandardLabel::All);
