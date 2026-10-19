@@ -889,6 +889,20 @@ reminder tables are built with `CONCURRENTLY`, each in a single-statement
 existing attachment lookup and reminder keys remain until their replacement
 indexes are ready. New, empty Outlook runtime tables keep ordinary index builds.
 
+Follow-up query tuning adds concurrent indexes in the same single-statement
+form, since environments that ran the original migrations already hold rows:
+
+- claim-order indexes for the message reconciliation, mailbox lifecycle outbox,
+  and address-book photo queues;
+- a lifecycle outbox `link_id` index and a calendar projection outbox
+  `next_run_at` index;
+- `User` indexes on `macro_user_id` and `lower(email)`;
+- an `email_threads` index on the default view sort key and a partial
+  `email_messages` index for starred messages.
+
+Each claim index replaces a `_due` index. A separate migration then drops the
+`_due` index with `DROP INDEX CONCURRENTLY IF EXISTS`.
+
 After an interrupted or failed concurrent build, inspect `pg_index.indisvalid`
 and `indisready` for the named index and check the migration ledger. An invalid
 index must be dropped with `DROP INDEX CONCURRENTLY` outside a transaction before
