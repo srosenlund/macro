@@ -1,0 +1,25 @@
+{
+  "variables": {
+    "apiKey": "#{TC_FA_API_KEY}",
+    "jwtSecret": "#{TC_FA_JWT_SECRET}",
+    "appId": "#{TC_FA_APPLICATION_ID}",
+    "tenantId": "#{TC_FA_TENANT_ID}"
+  },
+  "apiKeys": [
+    {
+      "key": "#{TC_FA_API_KEY}",
+      "description": "TC Macro API Key"
+    }
+  ],
+  "requests": [
+    {
+      "method": "PATCH",
+      "url": "/api/tenant/#{TC_FA_TENANT_ID}",
+      "body": {
+        "tenant": {
+          "name": "True Collective"
+        }
+      }
+    }
+  ]
+}
