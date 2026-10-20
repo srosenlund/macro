@@ -1,6 +1,8 @@
 # TC Macro public ingress (G1).
 # Upstream hostnames must match Sliplane private DNS: <service>.internal
-# Macro routers mount under /<prefix>; keep prefix when proxying.
+# Strip path prefix where Macro ALB pathPatterns expect the service to receive
+# the remaining path (auth/dss/etc. mount under their prefixes in prod ALB —
+# Macro routers mount under /<prefix>; keep prefix when proxying).
 
 {
 	auto_https off
@@ -15,6 +17,7 @@
 	}
 
 	# Same-origin API paths (mirror local proxy / production gateway prefixes)
+	# These still 502 until the named private backends are deployed — expected.
 	handle /auth* {
 		reverse_proxy {$TC_MACRO_AUTH_HOST:tc-macro-auth.internal}:{$TC_MACRO_AUTH_PORT:8080}
 	}
@@ -59,8 +62,24 @@
 	# directly to the TC CF worker URL in web config; do not pretend Miniflare
 	# is production here.
 
-	# Frontend SPA / static assets
+	# Frontend: until tc-macro-web is deployed, do not proxy to a missing
+	# *.internal host (that yields HTTP 502 on GET /). Staging stub only —
+	# not a Macro UI. When web is live, replace this handle with reverse_proxy
+	# to {$TC_MACRO_WEB_HOST:tc-macro-web.internal}:{$TC_MACRO_WEB_PORT:3000}.
 	handle {
-		reverse_proxy {$TC_MACRO_WEB_HOST:tc-macro-web.internal}:{$TC_MACRO_WEB_PORT:3000}
+		header Content-Type "text/html; charset=utf-8"
+		respond `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TC Macro staging</title>
+</head>
+<body>
+<h1>TC Macro staging</h1>
+<p>Web not deployed. Gateway is up; <code>/health</code> is ok.</p>
+<p>API paths and login are not ready (auth / FusionAuth / SMTP still gated).</p>
+</body>
+</html>` 200
 	}
 }
