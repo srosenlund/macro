@@ -3,7 +3,12 @@ FROM fusionauth/fusionauth-app:1.62.1
 COPY kickstart.template.json /opt/tc/kickstart.template.json
 COPY entrypoint.sh /opt/tc/entrypoint.sh
 USER root
-RUN chmod +x /opt/tc/entrypoint.sh \
+# Ensure python3 for kickstart rendering (image base may vary).
+RUN (command -v python3 >/dev/null \
+      || (apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*) \
+      || (microdnf install -y python3) \
+      || (apk add --no-cache python3)) \
+  && chmod +x /opt/tc/entrypoint.sh \
   && mkdir -p /usr/local/fusionauth/kickstart \
   && chown -R fusionauth:fusionauth /usr/local/fusionauth/kickstart /opt/tc
 USER fusionauth
