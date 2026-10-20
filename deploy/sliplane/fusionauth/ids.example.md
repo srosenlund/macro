@@ -19,4 +19,5 @@ for name in [
 PY
 ```
 
-Record chosen values in the authorized secret/config store alongside SMTP when Decision D is approved.
+Record chosen values in **True Collective Azure Key Vault** (`tc-macro/fusionauth/*`)
+alongside SMTP when Decision D is approved. Do not deploy FA until SMTP is present.
