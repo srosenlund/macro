@@ -2,7 +2,7 @@
 
 Base: `eeaa05d5403a84d7e2c4fd39092fbc969b03a0f9`
 
-Sliplane project (to create): `tc-macro` on server `true-collective`.
+Sliplane project (to create): `tc-macro` on server `true-collective`.  
 Private hostname pattern: `<service-name>.internal`.
 
 ## Must run for G1
@@ -27,7 +27,7 @@ Private hostname pattern: `<service-name>.internal`.
 | `tc-macro-static` | static_file_service | no | no | object store |
 | `tc-macro-preview` | preview_gateway | no | no | — |
 | `tc-macro-notify` | notification_service | no | no | — |
-| sync-service | Cloudflare Worker | CF edge | DO/D1/KV/R2 | TC Cloudflare account |
+| `tc-macro-sync` (sync-service) | Cloudflare Worker `[env.tc]` | CF edge | DO/D1/KV/R2 | TC CF resources created; deploy pending account-id in AKV |
 
 ## External / decision (not inventable as Docker-only)
 
