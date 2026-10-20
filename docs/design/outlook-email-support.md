@@ -894,14 +894,17 @@ form, since environments that ran the original migrations already hold rows:
 
 - claim-order indexes for the message reconciliation, mailbox lifecycle outbox,
   and address-book photo queues;
-- a lifecycle outbox `link_id` index and a calendar projection outbox
-  `next_run_at` index;
+- a lifecycle outbox `link_id` index, a partial lifecycle outbox index on
+  `link_id` for pending cleanup and revocation effects, and a calendar
+  projection outbox `next_run_at` index;
 - `User` indexes on `macro_user_id` and `lower(email)`;
 - an `email_threads` index on the default view sort key and a partial
   `email_messages` index for starred messages.
 
 Each claim index replaces a `_due` index. A separate migration then drops the
-`_due` index with `DROP INDEX CONCURRENTLY IF EXISTS`.
+`_due` index with `DROP INDEX CONCURRENTLY IF EXISTS`. The message and lifecycle
+claims name both values of their index's leading boolean, so Postgres versions
+without skip scan stop at the first row that isn't due yet.
 
 After an interrupted or failed concurrent build, inspect `pg_index.indisvalid`
 and `indisready` for the named index and check the migration ledger. An invalid
