@@ -36,11 +36,7 @@ DSS_URL = "http://localhost:8086"
 DSS_INTERNAL_AUTH_KEY = "local"
 LEXICAL_SERVICE_URL = "http://localhost:8096"
 LEXICAL_SERVICE_AUTH_KEY = "local"
-# Tags exported spans with deployment.environment=local, matching the
-# Datadog agent's DD_ENV so the env:local trace/log views include them.
 ENVIRONMENT = "local"
-# Local jaeger/datadog-agent OTLP receiver (docker port-mapped to the host).
-# Unset in deployed envs = trace and log export disabled.
 OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
 
 [[kv_namespaces]]
@@ -55,7 +51,6 @@ id = "9beead2b7891492f82153d2354e64e92"
 tag = "v1"
 new_sqlite_classes = ["DocumentSyncSession"]
 
-# PLAYGROUND ENV - Shared playground on real Cloudflare infrastructure
 [env.playground]
 name = "sync-service-playground"
 
@@ -94,15 +89,12 @@ id = "d107d66e62a942e8a90acdba8b04bd38"
 tag = "v1"
 new_sqlite_classes = ["DocumentSyncSession"]
 
-
-# DEVELOPMENT ENV - Used in development environment
 [env.dev]
 name = "sync-service-dev3"
 
 [env.dev.vars]
 INTERNAL_API_SECRET_KEY = "SYNC_SERVICE_KEY_DEV"
 ENVIRONMENT = "development"
-# The proxy injects the Datadog key; the exporter appends the signal path.
 OTEL_EXPORTER_OTLP_ENDPOINT = "https://macro-prox-dev.macroverse.workers.dev/i/otlp"
 SPS_URL = "https://dev-gateway.macro.com/search-processing"
 DSS_URL = "https://dev-gateway.macro.com/dss"
@@ -135,15 +127,12 @@ id = "9beead2b7891492f82153d2354e64e92"
 tag = "v1"
 new_sqlite_classes = ["DocumentSyncSession"]
 
-
-# PRODUDCTION ENV - Used in production environment
 [env.prod]
 name = "sync-service-prod2"
 
 [env.prod.vars]
 INTERNAL_API_SECRET_KEY = "SYNC_SERVICE_KEY_PROD"
 ENVIRONMENT = "production"
-# The proxy injects the Datadog key; the exporter appends the signal path.
 OTEL_EXPORTER_OTLP_ENDPOINT = "https://macro-prox-prod.macroverse.workers.dev/i/otlp"
 SPS_URL = "https://gateway.macro.com/search-processing"
 DSS_URL = "https://gateway.macro.com/dss"
@@ -175,3 +164,42 @@ id = "1e4c79d4265e40f08f9bfcb4c985c6d0"
 [[env.prod.kv_namespaces]]
 binding = "SNAPSHOT_STORE_KV"
 id = "50a128e2f8aa4357938fdb0ed0d629c5"
+
+# TRUE COLLECTIVE — Sliplane Phase 1 (G1)
+# Resource IDs from authenticated Cloudflare-bindings MCP (2026-10-20).
+# CLOUDFLARE_ACCOUNT_ID from Azure Key Vault tc-macro/cf/account-id
+[env.tc]
+name = "tc-macro-sync"
+
+[env.tc.vars]
+ENVIRONMENT = "tc"
+SPS_URL = "https://tc-macro-gateway.sliplane.app/search-processing"
+DSS_URL = "https://tc-macro-gateway.sliplane.app/dss"
+LEXICAL_SERVICE_URL = "https://tc-macro-gateway.sliplane.app/lexical"
+
+[env.tc.durable_objects]
+bindings = [
+  { name = "DOCUMENT_SYNC_SESSION", class_name = "DocumentSyncSession" },
+]
+
+[[env.tc.r2_buckets]]
+binding = "DOCUMENT_SNAPSHOT_BUCKET"
+bucket_name = "tc-macro-document-snapshots"
+
+[[env.tc.d1_databases]]
+binding = "USER_PEER_MAPPING"
+migrations_dir = "./database/user-peer-mapping/migrations/"
+database_name = "tc-macro-user-peer-mapping"
+database_id = "7c72c4a7-4cf2-46cb-871a-55150d01c763"
+
+[[env.tc.kv_namespaces]]
+binding = "DOCUMENT_VERSIONING_KV"
+id = "0f2aa8b3f5d244d4a3209cbf98027e25"
+
+[[env.tc.kv_namespaces]]
+binding = "SNAPSHOT_STORE_KV"
+id = "94752ca5eca4488db8d24f46027c4f9b"
+
+[[env.tc.migrations]]
+tag = "v1"
+new_sqlite_classes = ["DocumentSyncSession"]
