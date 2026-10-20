@@ -31,5 +31,17 @@ container start from secret env vars — **never bake secret values into git/ima
 | `TC_FA_OAUTH_REDIRECT_URI` | Public HTTPS auth callback |
 | `TC_INTERNAL_API_KEY` | Must match authentication-service internal key |
 
-Do not deploy this service until SMTP credentials exist; kickstart configures
-tenant email for passwordless codes required by G1 login.
+## Deploy gate (hard)
+
+**Do not deploy** `tc-macro-fusionauth` until all of the following exist in
+**True Collective Azure Key Vault** (not Infisical, not chat):
+
+1. `TC_FA_SMTP_HOST` / `PORT` / `SECURITY` / `USERNAME` / `PASSWORD`
+2. `TC_FA_MAIL_FROM`
+3. Remaining kickstart secrets listed above
+
+Kickstart configures tenant email for passwordless codes required by G1 login.
+Mailpit and M365 Phase 2 mailbox are **not** valid substitutes.
+
+After SMTP is in AKV: inject as Sliplane service secrets → build/push image →
+create private service pointing at `tc-macro-fusionauth-db.internal`.

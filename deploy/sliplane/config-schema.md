@@ -1,6 +1,8 @@
 # TC Macro config schema (names only)
 
-No secret **values** belong in this file, in git, or in chat. Store values in the authorized secret source; reference by name/path/id here.
+No secret **values** belong in this file, in git, or in chat. Store values in
+**True Collective Azure Key Vault** (prefix `tc-macro/`). Infisical is not used
+for Macro. Reference by vault path / Sliplane secret name / Cloudflare binding id.
 
 ## Runtime profile
 
@@ -40,11 +42,25 @@ No secret **values** belong in this file, in git, or in chat. Store values in th
 
 ## Sync (Cloudflare)
 
-| Key name (category) | Required |
+| Key name (category) | Required | Notes |
+| --- | --- | --- |
+| `tc-macro/cf/account-id` | yes | Dashboard; not returned by bindings MCP |
+| `tc-macro/cf/api-token` | yes | Token **name**/path only in git |
+| Worker secrets: `INTERNAL_API_SECRET_KEY`, DSS/Lexical auth | yes | `wrangler secret put --env tc` |
+| Public DSS/Lexical/SPS URLs | yes | `https://tc-macro-gateway.sliplane.app/...` — never `*.internal` |
+| D1 / KV / R2 / DO binding ids | yes | See `[env.tc]` in `services/sync-service/wrangler.toml` |
+
+## Azure Key Vault (Macro keystore)
+
+| Path prefix | Purpose |
 | --- | --- |
-| CF account id / API token name | yes |
-| Worker secrets: internal API keys, DSS/Lexical URLs | yes |
-| D1 / KV / R2 / DO binding ids | yes |
+| `tc-macro/fusionauth/*` | SMTP + FA kickstart secrets |
+| `tc-macro/cf/*` | Account id + API token |
+| `tc-macro/llm/anthropic-api-key` | Agent harness |
+| `tc-macro/aws/*` | S3/SQS/DDB/KMS |
+| `tc-macro/db/*`, `tc-macro/redis/*`, `tc-macro/internal-api-key` | Datastores + service auth |
+
+Sliplane has no native AKV pull: copy vault → Sliplane/`wrangler` secrets at deploy time.
 
 ## Sliplane platform
 
