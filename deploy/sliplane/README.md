@@ -15,5 +15,6 @@ True Collective deployment adapter for Macro on Sliplane.
 | `config-schema.md` | Required config keys (names only; no secret values) |
 | `accept-g1.md` | Gate G1 accept checklist |
 | `RELEASE.md` | Image tagging, migrate order, rollback |
+| `gateway/` | Public Caddy ingress (Dockerfile + Caddyfile) |
 
 Upstream AWS/Pulumi/Doppler deploy workflows stay disabled for TC.
