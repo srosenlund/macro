@@ -263,4 +263,3 @@ If Macro is interesting/useful to you, please scroll up and give the repo a star
     <img alt="Star history for macro-inc/macro, from launch to 4320 stars" src=".github/readme/star-history-light.svg" width="100%" />
   </picture>
 </a>
-Entire capture verification 2026-10-28.
